@@ -6,14 +6,14 @@
 
 ## 🏛️ Arquitectura del Sistema
 
-* **Inference Core (`server.py`):** Servidor API principal construido en FastAPI (Puerto 5000) con orquestación Ollama, grafo neuronal en `sda7` y fallback resiliente.
-* **Perception Matrix (`modules/orbital_gateway/`):**
+- **Inference Core (`server.py`):** Servidor API principal construido en FastAPI (Puerto 5000) con orquestación Ollama, grafo neuronal en `sda7` y fallback resiliente.
+- **Perception Matrix (`modules/orbital_gateway/`):**
   1. `telemetry_engine.py`: Seguimiento orbital en vivo y parámetros de radiación solar para la Estación Espacial Internacional (ISS).
   2. `earth_observer.py`: Evaluación meteorológica y baseline atmosférico global.
   3. `webcam_observer.py`: Red de nodos visuales públicos y canales privados autorizados.
   4. `starlink_engine.py`: Rastreo de la constelación LEO vía registros abiertos de CelesTrak.
   5. `abae_engine.py`: Monitoreo de activos satelitales soberanos de la ABAE (Venezuela).
-* **Directivas de Persona:** Formato obligatorio de hora en 12 horas AM/PM e interacción en Español Latam.
+- **Directivas de Persona:** Formato obligatorio de hora en 12 horas AM/PM e interacción en Español Latam.
 
 ---
 
@@ -25,7 +25,9 @@ python3 server.py
 
 # Diagnóstico de Percepción Multi-Capa (5 Pilares)
 python3 modules/orbital_gateway/verify_orbital.py
+
+```
+
 Arquitecto & Custodio: Jramonrivasg (Jramone3)
 
 Nodo Soberano: ramon-desktop | Aragua, Venezuela
-
