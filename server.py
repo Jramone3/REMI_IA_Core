@@ -89,7 +89,7 @@ def consultar_remi(prompt_usuario: str, system_prompt: str):
     """Inference execution engine using rigorous technical English taxonomy and Ollama client."""
     try:
         response = ollama.chat(
-            model='qwen2.5:3b',
+            model='remi:3b',
             keep_alive=-1,  # Locks instance in RAM for zero-latency execution
             options={
                 'temperature': 0.4,
@@ -171,7 +171,7 @@ def get_system_status():
 async def get_status_caza():
     return {
         "t1": {"status": "ONLINE", "log": "Local bunker telemetry active...", "color": "#64ffda"},
-        "t2": {"status": "LOCAL_LLM_ACTIVE", "log": "qwen2.5:3b Active (Environmental Context Enabled)", "color": "#64ffda"},
+        "t2": {"status": "LOCAL_LLM_ACTIVE", "log": "remi:3b Active (Environmental Context Enabled)", "color": "#64ffda"},
         "t3": {"status": "LIVE", "log": "Sovereign Node & Vega TTS Operational", "color": "#f2a900"},
         "t4": {"status": "NEURAL_GRAPH_ONDEMAND" if neural_graph_available else "OFFLINE", "log": "Neural Graph 119k (sda7 - Standby Mode)", "color": "#64ffda"}
     }
@@ -304,7 +304,7 @@ async def remi_endpoint(request: Request):
         
         try:
             response_text = consultar_remi(user_input, system_prompt)
-            response_origin = f"qwen2.5:3b{graph_origin}"
+            response_origin = f"remi:3b{graph_origin}"
         except Exception as local_ex:
             print(f"⚠️ Local Ollama exception: {local_ex}")
             if GEMINI_API_KEY:
