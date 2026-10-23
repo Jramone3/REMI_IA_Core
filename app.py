@@ -82,7 +82,7 @@ Transparencia Fiscal SENIAT - Venezuela | Registro en Búnker MongoDB Atlas
 load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "remi-enterprise:latest")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "remi:3b")
 
 ollama_ready = False
 
