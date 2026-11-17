@@ -248,6 +248,43 @@ def get_orbital_summary_text():
 # CHAT & INFERENCE ENDPOINT
 # ==============================================================================
 
+
+# [REMI OFFICIAL TTS AUDIO HOOK - UNIFIED & FULL TEXT]
+import threading
+import subprocess
+from gTTS import gTTS
+
+def speak_remi_audio(text):
+    def _run():
+        try:
+            if not text or len(text.strip()) < 3:
+                return
+            clean_text = re.sub(r'```.*?```', ' bloque de código omitido. ', text, flags=re.DOTALL)
+            clean_text = clean_text.replace("ramon-desktop", "ramón desktop")
+            clean_text = re.sub(r'[*#`>_~\[\]()|/\]', ' ', clean_text)
+            clean_text = re.sub(r'\n+', '. ', clean_text)
+            clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+
+            mp3_file = "/tmp/remi_voz_auto.mp3"
+            tts = gTTS(text=clean_text, lang='es', slow=False)
+            tts.save(mp3_file)
+            
+            uid = str(os.getuid())
+            env = os.environ.copy()
+            env["XDG_RUNTIME_DIR"] = f"/run/user/{uid}"
+            env["PULSE_SERVER"] = f"unix:/run/user/{uid}/pulse/native"
+
+            subprocess.run(
+                ["mpg123", "-q", mp3_file],
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+        except Exception as e:
+            print("[!] Error en REMI TTS Hook:", e)
+    threading.Thread(target=_run, daemon=True).start()
+
+
 @app.post("/api/remi")
 async def remi_endpoint(request: Request):
     response_text = ""
