@@ -83,3 +83,33 @@ def test_server_health_and_status_endpoints():
     r_caza = client.get("/api/status_caza")
     assert r_caza.status_code == 200
     assert "t1" in r_caza.json()
+
+
+def test_orbital_other_pillars_callable():
+    from modules.orbital_gateway import (
+        telemetry_engine,
+        earth_observer,
+        starlink_engine,
+        webcam_observer,
+    )
+
+    assert callable(telemetry_engine.compile_orbital_matrix)
+    assert callable(earth_observer.compile_earth_observation_matrix)
+    assert callable(starlink_engine.compile_starlink_matrix)
+    assert callable(webcam_observer.compile_visual_surveillance_matrix)
+
+
+def test_root_main_health_endpoint():
+    import importlib.util
+    from fastapi.testclient import TestClient
+
+    main_path = Path("/home/ramon/REMI_CORE/main.py")
+    spec = importlib.util.spec_from_file_location("remi_root_main", str(main_path))
+    mod = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(mod)
+
+    client = TestClient(mod.app)
+    res = client.get("/health")
+    assert res.status_code == 200
+    assert res.json().get("status") == "operational"
