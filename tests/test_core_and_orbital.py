@@ -104,9 +104,15 @@ def test_root_main_health_endpoint(monkeypatch):
     import types
     from fastapi.testclient import TestClient
 
+    class DummyLLM:
+        def __init__(self, *a, **kw):
+            self.cerebras_client = None
+            self.local_model = "qwen2.5:3b"
+            self.ollama_endpoint = "http://localhost:11434"
+
     for mod_name, attrs in {
         "core.vega_tts": {"speak": lambda *a, **kw: None},
-        "core.remi_unified_llm": {"RemiUnifiedLLM": type("RemiUnifiedLLM", (), {"__init__": lambda self, *a, **kw: None})},
+        "core.remi_unified_llm": {"RemiUnifiedLLM": DummyLLM},
         "core.remi_arsenal_manager": {
             "audit_arsenal": lambda: {"readiness_percentage": 100.0},
             "search_external_tools": lambda q: [],
