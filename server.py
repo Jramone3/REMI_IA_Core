@@ -16,7 +16,13 @@ import ollama
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from gtts import gTTS
+try:
+    try:
+        from gtts import gTTS
+    except ImportError:
+        gTTS = None
+except ImportError:
+    gTTS = None
 from datetime import timezone, timedelta
 
 # ==============================================================================
@@ -67,7 +73,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:8501",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,11 +89,26 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 LOG_PATH = os.path.expanduser("~/") + "REMI_CORE/bunker/REMI/ARCHIVOS_PERSONALES_RAMON/Proyecto_Remi_IA_App/REMI_CHATS/remi_output.log"
 VEGA_SCRIPT_PATH = "/home/ramon/REMI_CORE/bunker/VOZ_REMI/vega.py"
 
+ALLOWED_DIAG_PREFIXES = (
+    "uptime",
+    "df -h",
+    "free -h",
+    "ps aux",
+    "ss -tulnp",
+)
+
+
 def bunker_shell(cmd):
+    if os.getenv("REMI_ENABLE_SHELL_EXEC", "false").lower() != "true":
+        return "SHELL_EXEC_BLOCKED: Disabled by security policy (set REMI_ENABLE_SHELL_EXEC=true to allow)."
+    clean_cmd = (cmd or "").strip()
+    if not clean_cmd or not any(clean_cmd == p or clean_cmd.startswith(p + " ") for p in ALLOWED_DIAG_PREFIXES):
+        return f"SHELL_EXEC_REJECTED: Command not in safe diagnostic allowlist: {clean_cmd}"
     try:
-        proc = subprocess.Popen(["/bin/bash", "-c", cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        stdout, stderr = proc.communicate(timeout=30)
-        return stdout if stdout else stderr
+        import shlex
+        args = shlex.split(clean_cmd)
+        proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15, check=False)
+        return proc.stdout if proc.stdout else proc.stderr
     except Exception as e:
         return f"SYSTEM_EXECUTION_ERROR: {str(e)}"
 
@@ -252,7 +279,10 @@ def get_orbital_summary_text():
 # [REMI OFFICIAL TTS AUDIO HOOK - UNIFIED & FULL TEXT]
 import threading
 import subprocess
-from gTTS import gTTS
+try:
+    from gTTS import gTTS
+except ImportError:
+    gTTS = None
 
 def speak_remi_audio(text):
     def _run():

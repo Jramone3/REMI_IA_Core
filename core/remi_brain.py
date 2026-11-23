@@ -2,41 +2,85 @@
 # -*- coding: utf-8 -*-
 
 """
-REMI Neural Graph Engine (sda7 - 119k Nodes)
-Rigorous Technical English Taxonomy & On-Demand Retrieval Interface.
+REMI Neural Graph Interface (sda7)
+Verifies real graph storage availability and performs filesystem/index lookups
+without fabricating traversal telemetry when the graph directory is absent.
 """
 
 import os
 import sys
-import json
+from pathlib import Path
+from typing import List
 
-GRAPH_STORAGE_PATH = "/mnt/sda7/REMI_NEURAL_GRAPH/"
 
-def consultar_grafo_neuronal(query: str) -> str:
+def resolve_graph_path() -> Path:
+    """Resolves neural graph storage path from environment or known sda7 candidates."""
+    env_path = os.getenv("REMI_GRAPH_PATH")
+    if env_path:
+        return Path(env_path).expanduser()
+
+    candidates = [
+        Path("/mnt/sda7/REMI_NEURAL_GRAFO"),
+        Path("/mnt/sda7/REMI_NEURAL_GRAPH"),
+        Path("/mnt/sda7/REMI_BUNKER_MASTER/remi_graphify"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+def consultar_grafo_neuronal(query: str, max_matches: int = 10) -> str:
     """
-    Executes neural graph traversal and node proximity matching on partition sda7.
-    Returns structured technical context payload for inference ingestion.
+    Checks real graph path on sda7 and searches matching file/node entries when present.
+    Returns explicit status (AVAILABLE, EMPTY_INDEX, or UNAVAILABLE).
     """
-    try:
-        if not query or not isinstance(query, str):
-            return "[NEURAL_GRAPH_WARNING]: Empty or invalid query payload received."
-        
-        # Sanitization and query tokenization
-        clean_query = query.strip().lower()
-        
-        # Placeholder for graph traversal logic (119k nodes index lookup)
-        # Here we structure the response payload for the backend LLM consumption
-        response_payload = (
-            f"### NEURAL GRAPH TELEMETRY (sda7)\n"
+    if not query or not isinstance(query, str) or not query.strip():
+        return "[NEURAL_GRAPH_WARNING]: Empty or invalid query payload received."
+
+    clean_query = query.strip().lower()
+    graph_path = resolve_graph_path()
+
+    if not graph_path.exists() or not graph_path.is_dir():
+        return (
+            f"### NEURAL GRAPH TELEMETRY\n"
             f"- Target Query Token: '{clean_query}'\n"
-            f"- Status: Active Graph Index Lookup\n"
-            f"- Partition Mount: /mnt/sda7 (Verified)\n"
-            f"- Result: Node proximity search executed successfully with optimized low-latency traversal."
+            f"- Status: UNAVAILABLE\n"
+            f"- Expected Path: {graph_path}\n"
+            f"- Detail: Graph directory does not exist or is not mounted."
         )
-        return response_payload
 
-    except Exception as e:
-        return f"[NEURAL_GRAPH_CRITICAL_ERROR]: Traversal failure on sda7 -> {str(e)}"
+    matches: List[str] = []
+    total_entries = 0
+    try:
+        for root, _, files in os.walk(graph_path):
+            for fname in files:
+                total_entries += 1
+                full_path = Path(root) / fname
+                if clean_query in fname.lower() or clean_query in str(full_path).lower():
+                    if len(matches) < max_matches:
+                        matches.append(str(full_path.relative_to(graph_path)))
+    except Exception as exc:
+        return (
+            f"### NEURAL GRAPH TELEMETRY\n"
+            f"- Target Query Token: '{clean_query}'\n"
+            f"- Status: DEGRADED\n"
+            f"- Path: {graph_path}\n"
+            f"- Error: {exc}"
+        )
+
+    status = "AVAILABLE" if total_entries > 0 else "EMPTY_INDEX"
+    sample_str = ", ".join(matches) if matches else "No direct filename/path matches"
+
+    return (
+        f"### NEURAL GRAPH TELEMETRY\n"
+        f"- Target Query Token: '{clean_query}'\n"
+        f"- Status: {status}\n"
+        f"- Graph Path: {graph_path}\n"
+        f"- Indexed Files Scanned: {total_entries}\n"
+        f"- Sample Matches ({len(matches)}): {sample_str}"
+    )
+
 
 if __name__ == "__main__":
     test_query = sys.argv[1] if len(sys.argv) > 1 else "system_status"
