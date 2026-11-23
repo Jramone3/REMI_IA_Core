@@ -99,9 +99,18 @@ def test_orbital_other_pillars_callable():
     assert callable(webcam_observer.compile_visual_surveillance_matrix)
 
 
-def test_root_main_health_endpoint():
+def test_root_main_health_endpoint(monkeypatch):
     import importlib.util
+    import types
     from fastapi.testclient import TestClient
+
+    root_core = "/home/ramon/REMI_CORE"
+    if Path(root_core).exists() and root_core not in sys.path:
+        sys.path.insert(0, root_core)
+    if "core.vega_tts" not in sys.modules:
+        fake_mod = types.ModuleType("core.vega_tts")
+        fake_mod.speak = lambda *a, **kw: None
+        monkeypatch.setitem(sys.modules, "core.vega_tts", fake_mod)
 
     main_path = Path("/home/ramon/REMI_CORE/main.py")
     spec = importlib.util.spec_from_file_location("remi_root_main", str(main_path))
