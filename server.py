@@ -280,6 +280,9 @@ def get_orbital_summary_text():
 import threading
 import subprocess
 try:
+    pass
+except ImportError:
+    gTTS = None
 
 def speak_remi_audio(text):
     def _run():
