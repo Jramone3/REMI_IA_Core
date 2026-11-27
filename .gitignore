@@ -17,3 +17,4 @@ __pycache__/
 *.log
 *.jsonl
 *.bak
+.coverage

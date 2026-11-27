@@ -9,10 +9,10 @@ import os
 from datetime import datetime, timezone
 
 def fetch_public_webcam_nodes():
-    """Retrieves status for general open-source public observation nodes."""
+    """Returns static registry entries for public observation nodes (no live stream probe)."""
     return [
-        {"node_id": "CAM-GLOBAL-MET-01", "location": "North Atlantic Maritime Proxy", "status": "ACTIVE", "type": "Open Public"},
-        {"node_id": "CAM-GLOBAL-URB-02", "location": "Caribbean Basin / Northern South America", "status": "ACTIVE", "type": "Open Public"}
+        {"node_id": "CAM-GLOBAL-MET-01", "location": "North Atlantic Maritime Proxy", "status": "STATIC_REGISTRY", "type": "Open Public"},
+        {"node_id": "CAM-GLOBAL-URB-02", "location": "Caribbean Basin / Northern South America", "status": "STATIC_REGISTRY", "type": "Open Public"}
     ]
 
 def fetch_authorized_secure_feeds():
@@ -32,7 +32,7 @@ def fetch_authorized_secure_feeds():
             "feed_id": "CAM-AUTH-PUB-02",
             "description": "Authorized Municipal Traffic & Weather High-Res Feed",
             "access_tier": "Public / API-Key Verified",
-            "status": "AUTHORIZED_ACTIVE"
+            "status": "CONFIGURED_STATIC" if not os.getenv("REMI_CAM_PUB_02_URL") else "URL_CONFIGURED"
         }
     ]
     return authorized_registry
@@ -61,7 +61,7 @@ def compile_visual_surveillance_matrix():
         
     report_lines.append(f"--- SURVEILLANCE DIRECTIVE ---")
     report_lines.append(f"  * Mode: On-Demand Visual Inspection & Secure Proxy Routing")
-    report_lines.append(f"  * Authorization State: Verified")
+    report_lines.append(f"  * Authorization State: Static Registry / Env-Gated (No Live Stream Probe)")
     report_lines.append(f"==================================================")
     
     return "\n".join(report_lines)

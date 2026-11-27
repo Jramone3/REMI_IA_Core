@@ -17,21 +17,40 @@ from core.context_engine import get_remi_environmental_context
 st.set_page_config(page_title="REMI Enterprise Suite", page_icon="🤖", layout="wide")
 
 EMISOR_FISCAL = {
-    "contribuyente": "Jesús Ramón Rivas García",
-    "rif": "V050153998",
-    "domicilio": "Calle El Samán, Casa Nro 17, Sector Porvorín, Guayabita, Aragua, Venezuela",
-    "wallet_oficial": "0x96De980a766CCb10A19B6962587e2b61B650b372",
-    "wallet_gas": "0xe4EdB277e4122137966EFC68615b3C5890d2979E",
-    "red": "Base Network (ChainID: 8453)"
+    "contribuyente": os.getenv("REMI_ISSUER_NAME", "REMI Sovereign Node"),
+    "rif": os.getenv("REMI_ISSUER_RIF", "CONFIGURE-RIF-ENV"),
+    "domicilio": os.getenv("REMI_ISSUER_ADDRESS", "Configure REMI_ISSUER_ADDRESS in environment"),
+    "wallet_oficial": os.getenv("REMI_OFFICIAL_WALLET", "0x0000000000000000000000000000000000000000"),
+    "wallet_gas": os.getenv("REMI_GAS_WALLET", "0x0000000000000000000000000000000000000000"),
+    "red": os.getenv("REMI_CHAIN_LABEL", "Base Network (ChainID: 8453)")
 }
 
 BASE_RPC_URL = "https://mainnet.base.org"
 w3_base = Web3(Web3.HTTPProvider(BASE_RPC_URL))
 
+def verificar_tx_base(tx_hash):
+    h = (tx_hash or "").strip()
+    if not re.fullmatch(r"0x[0-9a-fA-F]{64}", h):
+        return False, "NO VERIFICADO (sin hash de transacción válido)"
+    try:
+        if not w3_base.is_connected():
+            return False, "PENDIENTE (RPC Base no disponible)"
+        receipt = w3_base.eth.get_transaction_receipt(h)
+        if receipt and getattr(receipt, "status", None) == 1:
+            return True, f"VERIFICADO ON-CHAIN (Bloque {receipt.blockNumber})"
+        if receipt:
+            return False, "FALLIDA ON-CHAIN (status != 1)"
+        return False, "PENDIENTE / NO ENCONTRADA EN BASE"
+    except Exception as e:
+        return False, f"NO VERIFICADO ({str(e)[:40]})"
+
 def obtener_saldo_gas_bunker():
     try:
         if w3_base.is_connected():
-            balance_wei = w3_base.eth.get_balance(EMISOR_FISCAL["wallet_gas"])
+            wallet_gas = EMISOR_FISCAL["wallet_gas"]
+            if not Web3.is_address(wallet_gas) or int(wallet_gas, 16) == 0:
+                return "N/A", "⚪ REMI_GAS_WALLET no configurada"
+            balance_wei = w3_base.eth.get_balance(Web3.to_checksum_address(wallet_gas))
             balance_eth = w3_base.from_wei(balance_wei, 'ether')
             return f"{balance_eth:.6f} ETH", "🟢 Conectado a Base Mainnet"
         else:
@@ -42,6 +61,8 @@ def obtener_saldo_gas_bunker():
 def generar_factura_digital(cliente_email, cliente_empresa, monto_usd, tx_hash, num_licencia):
     fecha_emision = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
     num_factura = f"REMI-INV-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+    _, estado_tx = verificar_tx_base(tx_hash)
+    tx_display = (tx_hash or '').strip() or 'NO_REGISTRADO'
     
     factura_text = f"""
 ================================================================================
@@ -49,7 +70,7 @@ def generar_factura_digital(cliente_email, cliente_empresa, monto_usd, tx_hash, 
 ================================================================================
 N° Factura/Recibo : {num_factura}
 Fecha de Emisión  : {fecha_emision}
-Estado de Pago    : VERIFICADO ON-CHAIN 🟢
+Estado de Pago    : {estado_tx}
 
 --------------------------------------------------------------------------------
 🏛️ EMISOR (PROVEEDOR DEL SOFTWARE)
@@ -71,7 +92,7 @@ Estado de Pago    : VERIFICADO ON-CHAIN 🟢
 - Producto         : Licencia REMI Enterprise Suite v1.0.0
 - Serial Licencia  : {num_licencia}
 - Monto Total      : ${monto_usd}.00 USD
-- Hash Transacción : {tx_hash}
+- Hash Transacción : {tx_display}
 
 --------------------------------------------------------------------------------
 Transparencia Fiscal SENIAT - Venezuela | Registro en Búnker MongoDB Atlas
@@ -167,7 +188,7 @@ elif selected_tab == "🔑 Adquirir Licencia Enterprise":
     
     col1, col2 = st.columns([2, 1])
     with col1:
-        email_input = st.text_input("Correo electrónico registrado en el Búnker:", value="jramonrivasg@gmail.com")
+        email_input = st.text_input("Correo electrónico registrado en el Búnker:", value="")
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         verify_btn = st.button("🔍 Consultar Búnker MongoDB", use_container_width=True)
@@ -200,7 +221,7 @@ elif selected_tab == "🔑 Adquirir Licencia Enterprise":
                                 cliente_email=email_input,
                                 cliente_empresa=record.get("client_name", "Cliente Enterprise"),
                                 monto_usd=499,
-                                tx_hash=record.get("tx_hash", "0x96De980a766CCb10A19B6962587e2b61B650b372 (Direct Búnker)"),
+                                tx_hash=record.get("tx_hash", ""),
                                 num_licencia=license_hash_val
                             )
                             
@@ -226,7 +247,7 @@ elif selected_tab == "🔑 Adquirir Licencia Enterprise":
                                     "tier": "Enterprise 100/100",
                                     "expires": "2027-12-31",
                                     "license_hash": "REMI-BUNKER-LIVE-2026-OK",
-                                    "client_name": "Ramon Rivas Enterprise"
+                                    "client_name": "Cliente Enterprise"
                                 }
                                 collection.update_one({"email": email_input}, {"$set": sample_data}, upsert=True)
                                 st.success("¡Licencia de prueba creada con éxito! Vuelve a consultar.")
@@ -237,6 +258,14 @@ elif selected_tab == "🔑 Adquirir Licencia Enterprise":
             st.warning("Por favor ingresa un correo electrónico para realizar la consulta.")
 
 elif selected_tab == "🛡️ Registro de Licencias (Admin)":
+    admin_pin = os.getenv("REMI_ADMIN_PIN", "").strip()
+    if not admin_pin:
+        st.warning("🔒 Panel de administración bloqueado: configura REMI_ADMIN_PIN en el entorno para habilitarlo.")
+        st.stop()
+    entered_pin = st.text_input("PIN de Administrador:", type="password")
+    if entered_pin != admin_pin:
+        st.info("Ingresa el PIN de administrador válido para acceder a la gestión de licencias.")
+        st.stop()
     st.header("🛡️ Panel Administrador - Generación de Licencias & Búnker On-Chain")
     st.write("Monitorea la infraestructura de red, saldo de gas y registra licencias directamente en el Búnker MongoDB Atlas.")
 
